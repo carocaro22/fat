@@ -28,9 +28,6 @@
 
   // A sector has 0x200 bytes = 512 bytes
   fseek(in, 512 * pt[0].start_sector, SEEK_SET); // Boot sector starts here (seek in bytes)
-  //printf("partition length sectors: %X\n", pt[0].length_sectors);
-  // printf("partition sector start %X\n", pt[0].start_sector);
-  // printf("absolute start of boot sector: %X\n", 512 * pt[0].start_sector);
   fread(&bs, sizeof(Fat16BootSector), 1, in);    // Read boot sector content, see http://www.tavi.co.uk/phobos/fat.html#boot_block
   long begin_of_root = (bs.reserved_sectors - 1 + bs.fat_size_sectors * bs.number_of_fats) * bs.sector_size;
   fseek(in, begin_of_root, SEEK_CUR);
@@ -42,76 +39,35 @@
         memcpy(temp, entry.filename, 8);
         temp[8] = '\0'; 
       if (strcmp(temp, name_padded) == 0) {
-        //printf("Found file!-------------------\n");
-        //printf("%.8s.%.3s attributes 0x%02X starting cluster 0x%8X len %8d B\n", entry.filename, entry.ext, entry.attributes, entry.starting_cluster, entry.file_size);
-
-        // Total space occupied by the root directory
         long blocks_dir = bs.root_dir_entries * 32; 
-        // printf("Blocks dir entries: %d \n", bs.root_dir_entries);
-        // printf("Total space occupied by the root directory: 0x%X \n", blocks_dir);
-        // printf("begin of root: 0x%X\n", begin_of_root_abs);
-
-        // Calculate the start of the data area
         long data_area_start = begin_of_root_abs + blocks_dir;
-
-        // Calculate cluster size
-        // Sector size = 0x200
         unsigned int cluster_size = bs.sectors_per_cluster * bs.sector_size;
-
-        // Calculate the start position of the file's data
         long startPos = data_area_start + (entry.starting_cluster - 2) * cluster_size;
-
         long boot_sector_start = bs.sector_size * pt[0].start_sector;
         long fat_start = boot_sector_start + cluster_size; // boot block has one sector
         long entry_block_in_fat = entry.starting_cluster / 200;
         long entry_in_fat = fat_start + (entry_block_in_fat * cluster_size) + (entry.starting_cluster * 2);
 
-        // printf("startpos of file: 0x%X: \n", startPos);
-        // printf("sector_size: %X\n", bs.sector_size);
-        // printf("sectors_per_cluster %X\n", bs.sectors_per_cluster);
-        // printf("cluster_size: %X\n\n", cluster_size);
-        // printf("entry starting cluster: %X\n", entry.starting_cluster);
-
-        // printf("boot_sector_start: %X\n", boot_sector_start);
-        printf("entry_in_fat: %X\n", entry_in_fat);
-        // printf("fat_start %X\n", fat_start);
-
-        
-
         char* data = malloc(entry.file_size);
         FILE* out = fopen(filename, "wb");
         
-        printf("filesize: %d\n", entry.file_size);
-        //printf("cluster size: %d\n", cluster_size);
-
         if (entry.file_size <= cluster_size) {
-          //printf("text\n");
           fseek(in, startPos, SEEK_SET); // start reading from start position
           fread(data, entry.file_size, 1, in);  // Read only bytes_to_write bytes
           size_t written = fwrite(data, 1, entry.file_size, out);
         }
         else {
-          //printf("else\n");
         unsigned int fat_content_address = entry_in_fat; // address of first data entry in fat
         unsigned short fat_content = 0; // content of fat, also the position of next cluster of data
         int entry_offset = startPos; // offset to add to fat_content
         unsigned int total_bytes_written = 0;
-        unsigned int filesize = 0x9e40;
-        // write to file block
-        fseek(in, startPos, SEEK_SET); // start reading from start position
-        fread(data, cluster_size, 1, in);  // Read only bytes_to_write bytes
-        size_t written = fwrite(data, 1, cluster_size, out);
-        // end of write to file block
-
-        while(1) {
-            int bytes_to_write = cluster_size;
+        unsigned int filesize = entry.file_size;
+        
+        int bytes_to_write = cluster_size;
+        while(fat_content != 0xFFFF) {
             fseek(in, fat_content_address, SEEK_SET);
             fread(&fat_content, 2, 1, in);
             
-            printf("entry offset: %X\n", entry_offset);
-            //printf("fat_content: %X\n", fat_content);
-            //printf("fat address: %X\n", fat_content_address);
-
             // write to file block
             fseek(in, entry_offset, SEEK_SET); // start reading from start position
             fread(data, bytes_to_write, 1, in);  // Read only bytes_to_write bytes
@@ -121,16 +77,13 @@
             total_bytes_written += written;
             if (total_bytes_written + cluster_size > filesize) {
                 bytes_to_write = filesize - total_bytes_written; // calculate remaining bytes
+            } else {
+              bytes_to_write = cluster_size;
             }
 
             // calculate next
             fat_content_address += 2;
-            entry_offset = data_area_start + (fat_content * cluster_size);
-            
-            if (fat_content == 0xFFFF) {
-              printf("secondif\n");
-              break;
-            }
+            entry_offset = data_area_start + (fat_content * cluster_size) - (2 * cluster_size);
           }
         }
         free(data);
@@ -235,9 +188,9 @@ int main() {
   FILE* in = fopen("sd.img", "rb");
   
   //listAllFiles(in); // Given code
-  list(in); // formatted string to DOS format
+  //list(in); // formatted string to DOS format
   read("FAT16.jpg", in);
-  //read("ABSTRAKT.txt", in);
+  read("ABSTRAKT.txt", in);
 
   fclose(in);
   return 0;
