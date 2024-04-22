@@ -73,7 +73,7 @@
         // printf("entry starting cluster: %X\n", entry.starting_cluster);
 
         // printf("boot_sector_start: %X\n", boot_sector_start);
-        // printf("entry_in_fat: %X\n", entry_in_fat);
+        printf("entry_in_fat: %X\n", entry_in_fat);
         // printf("fat_start %X\n", fat_start);
 
         
@@ -92,14 +92,22 @@
         }
         else {
           //printf("else\n");
-        unsigned int fat_content_address = entry_in_fat - 2; // address of first data entry in fat
+        unsigned int fat_content_address = entry_in_fat; // address of first data entry in fat
         unsigned short fat_content = 0; // content of fat, also the position of next cluster of data
         int entry_offset = startPos; // offset to add to fat_content
         unsigned int total_bytes_written = 0;
-        unsigned int filesize = entry.file_size;
+        unsigned int filesize = 0x9e40;
+        // write to file block
+        fseek(in, startPos, SEEK_SET); // start reading from start position
+        fread(data, cluster_size, 1, in);  // Read only bytes_to_write bytes
+        size_t written = fwrite(data, 1, cluster_size, out);
+        // end of write to file block
 
         while(1) {
             int bytes_to_write = cluster_size;
+            fseek(in, fat_content_address, SEEK_SET);
+            fread(&fat_content, 2, 1, in);
+            
             printf("entry offset: %X\n", entry_offset);
             //printf("fat_content: %X\n", fat_content);
             //printf("fat address: %X\n", fat_content_address);
@@ -113,30 +121,11 @@
             total_bytes_written += written;
             if (total_bytes_written + cluster_size > filesize) {
                 bytes_to_write = filesize - total_bytes_written; // calculate remaining bytes
-                printf("if condition\n");
-                
-                // get address block
-                fat_content_address += 2;
-                fseek(in, fat_content_address, SEEK_SET);
-                fread(&fat_content, 2, 1, in);
-                entry_offset = data_area_start + (fat_content * cluster_size);
-                //end of get address block
-                
-                // write to file block
-                fseek(in, entry_offset, SEEK_SET); // start reading from start position
-                fread(data, bytes_to_write, 1, in);  // Read only bytes_to_write bytes
-                size_t written = fwrite(data, 1, bytes_to_write, out);
-                // end of write to file block
-
-                break;
             }
 
-            // get address block
+            // calculate next
             fat_content_address += 2;
-            fseek(in, fat_content_address, SEEK_SET);
-            fread(&fat_content, 2, 1, in);
             entry_offset = data_area_start + (fat_content * cluster_size);
-            //end of get address block
             
             if (fat_content == 0xFFFF) {
               printf("secondif\n");
