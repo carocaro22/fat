@@ -1,5 +1,6 @@
 // FAT16 structures
 // see http://www.tavi.co.uk/phobos/fat.html
+#include <stdio.h>
 
 typedef struct {
     unsigned char first_byte; //1
@@ -47,3 +48,8 @@ typedef struct {
     unsigned short starting_cluster; //28
     unsigned int file_size; //32
 } __attribute((packed)) Fat16Entry;
+
+
+
+long findRoot(FILE *in, Fat16BootSector *bs);
+long calculateStartingPosition(FILE *in, int starting_cluster, long root_address, Fat16BootSector* bs);
