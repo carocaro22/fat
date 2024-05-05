@@ -27,6 +27,7 @@ int findFatStart(FILE* in, long *fat_start, long *fat_size, bool verbose) {
     *fat_start = boot_sector_start + cluster_size; // boot block has one sector
     *fat_size = bs.fat_size_sectors * bs.sector_size;
 }
+
 int findFreeCluster(FILE* in, bool verbose) {
     long fat_start;
     long fat_size; 
@@ -42,44 +43,21 @@ int findFreeCluster(FILE* in, bool verbose) {
     for (int offset = 0; offset <= (fat_size - 1); offset++) {
         fseek(in, fat_start + (2 * offset), SEEK_SET);
         start = ftell(in);
+        // printf("fat_entry_address: %lX\n", start);
         fread(&tmp, sizeof(short), 1, in);
         if (tmp == cmp) {
+            fseek(in, start, SEEK_SET);
             char data[2] = {0xFF, 0xFF}; // generalize this
             if (fwrite(&data, sizeof(char), 2, in) < 2) {
                 if (verbose) {
-                    printf("starting cluster: %d\n", offset);
                     printf("Error writing to file\n");
                 }
                 return offset;
             }
-            printf("fat_address: %X\n", start);
-            printf("starting cluster: %d\n", offset);
+            // printf("fat_address: %X\n", start);
             return offset;
         }
     }
-}
-
-short findNextCluster(FILE* in, short old_cluster, bool verbose) { 
-    long fat_start;
-    long fat_size; 
-    findFatStart(in, &fat_start, &fat_size, true);
-
-    long entry_block_in_fat = old_cluster / 200;
-    long entry_in_fat = fat_start + (entry_block_in_fat * 0x800) + (old_cluster * 2);
-
-    fseek(in, entry_in_fat, SEEK_SET);
-    if (fwrite(&old_cluster, sizeof(short), 1, in) < 1) {
-        if (verbose) {
-            //printf("Error writing to file\n");
-        }
-    }
-
-    short new_cluster = findFreeCluster(in, false);
-    if (verbose) 
-    {
-        //printf("new_cluster: %d\n", new_cluster);
-    }
-    return new_cluster;
 }
 
 void writeToClusters(int starting_cluster, char* data, int filesize, FILE* in, bool verbose) {
@@ -95,8 +73,6 @@ void writeToClusters(int starting_cluster, char* data, int filesize, FILE* in, b
     
     printf ("-----------writing to cluster--------\n");
     for (int i = 0; i < filesize; i += chunk_size) {
-        //printf("pointer offset: %X\n", i);
-        //printf("pointer: %lX\n", ptr);
         old_cluster = current_cluster;
         PartitionTable pt[4];
         Fat16BootSector bs;
@@ -112,22 +88,28 @@ void writeToClusters(int starting_cluster, char* data, int filesize, FILE* in, b
         unsigned int cluster_size = bs.sectors_per_cluster * bs.sector_size;
         long data_area_start = root_addr + blocks_dir;
         long start_pos = data_area_start + (current_cluster - 2) * cluster_size;
+        printf("current_cluster: %hd\n", current_cluster);
+        // printf("start_pos: %lX\n", start_pos);
         fseek(in, start_pos, SEEK_SET);
     
         if (filesize - i < chunk_size) 
         {
             chunk_size = filesize - i; // lastchunk
+            if (fwrite(ptr, sizeof(char), chunk_size, in) < chunk_size) 
+            {
+                if (verbose) {
+                    printf("Error writing to file\n");
+                }
+            } 
+            return; // avoid calling findFreeCluster again
         }
         if (fwrite(ptr, sizeof(char), chunk_size, in) < chunk_size) 
         {
             if (verbose) {
-                printf("chunk_size: %X\n", chunk_size);
-                //printf("ptr: %X\n", ptr);
                 printf("Error writing to file\n");
             }
         } 
-        printf("start_pos: %lX\n", start_pos);
-        current_cluster = findNextCluster(in, old_cluster, true);
+        current_cluster = findFreeCluster(in, false);
         ptr += chunk_size; 
     }
     printf("--------finished writing---------\n");
