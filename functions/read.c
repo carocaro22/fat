@@ -68,17 +68,22 @@ void read(char *filename, long directory_address, FILE *in)
                 }
                 else
                 {
-                    unsigned int fat_content_address = entry_in_fat; // address of first data entry in fat
-                    unsigned short fat_content = 0;                  // content of fat, also the position of next cluster of data
                     int entry_offset = startPos;                     // offset to add to fat_content
                     unsigned int total_bytes_written = 0;
                     unsigned int filesize = entry.file_size;
 
+                    unsigned short fat_content = entry.starting_cluster;                // content of fat, also the position of next cluster of data
+                    long fat_content_address = fat_start + (fat_content / 200 * cluster_size) + (fat_content * 2);
+
                     int bytes_to_write = cluster_size;
                     while (fat_content != 0xFFFF)
                     {
+                        fat_content_address = fat_start + (fat_content / 200 * cluster_size) + (fat_content * 2);
                         fseek(in, fat_content_address, SEEK_SET);
+                        unsigned short zero = 0;
                         fread(&fat_content, 2, 1, in);
+                        printf("current_cluster: %X\n", fat_content);
+                        printf("current_cluster_address: %X\n", fat_content_address);
 
                         // write to file block
                         fseek(in, entry_offset, SEEK_SET);  // start reading from start position
@@ -97,7 +102,7 @@ void read(char *filename, long directory_address, FILE *in)
                         }
 
                         // calculate next
-                        fat_content_address += 2;
+                        // fat_content_address += 2;
                         entry_offset = data_area_start + (fat_content * cluster_size) - (2 * cluster_size);
                     }
                 }

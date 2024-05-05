@@ -35,14 +35,13 @@ int main()
     Directory* root = printTree(in);
     
     //printf(root->name);
-    Directory* dir = changeDir(root, "/ADR2");
-    //printf("%s\n\n", dir->name);
-    //write("ddd.txt", dir->address, in);
+    Directory* dir = changeDir(root, "/ADR1");
+    printf("%lX\n\n", dir->address);
+    //write("data.txt", dir->address, in);
 
     //printf("-----READ-----\n");
-    //read("ccc.txt", dir->address, in);
-
-    mydelete("ccc.txt", dir->address, in);
+    read("KOCKA.JPG", dir->address, in);
+    //mydelete("data.txt", dir->address, in);
 
     freeDirectoryTree(root);
     fclose(in);

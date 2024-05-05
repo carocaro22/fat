@@ -53,22 +53,19 @@ void mydelete(char* filename, long directory_address, FILE* in) {
                 long entry_in_fat = fat_start + (entry_block_in_fat * cluster_size) + (entry.starting_cluster * 2);
 
                 unsigned short current_cluster = entry.starting_cluster;          // actual cluster
-                unsigned short next_cluster = 0;              // next cluster
 
                 while (current_cluster != 0xFFFF)
                 {
                     long entry_in_fat = fat_start + (current_cluster / 200 * cluster_size) + (current_cluster * 2);
                     fseek(in, entry_in_fat, SEEK_SET);
                     unsigned short zero = 0;
-                    fread(&next_cluster, 2, 1, in);
+                    fread(&current_cluster, 2, 1, in);
                     fseek(in, entry_in_fat, SEEK_SET);
                     fwrite(&zero, sizeof(short), 1, in);
 
-                    //printf("entry_in_fat: %X\n", entry_in_fat);
-                    //printf("current_cluster: %X\n", current_cluster);
-                    printf("next_cluster: %X\n", next_cluster);
-                    
-                    current_cluster = next_cluster;
+                    // printf("entry_in_fat: %X\n", entry_in_fat);
+                    printf("current_cluster: %X\n", current_cluster);
+                    // printf("next_cluster: %X\n", next_cluster);   
                 } 
             }
         }
