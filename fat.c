@@ -4,6 +4,8 @@
 #include "functions/list_dos.h"
 #include "functions/directoryTree.h"
 #include "functions/read.h"
+#include "functions/write.h"
+#include "functions/delete.h"
 
 long findRoot(FILE *in, Fat16BootSector *bs)
 {
@@ -18,6 +20,7 @@ long findRoot(FILE *in, Fat16BootSector *bs)
 
     return begin_of_root_abs;
 }
+
 long calculateStartingPosition(FILE *in, int starting_cluster, long root_address, Fat16BootSector* bs) {
     long data_area_start = root_address + (bs->root_dir_entries * sizeof(Fat16Entry));
     unsigned int cluster_size = bs->sectors_per_cluster * bs->sector_size;
@@ -25,15 +28,22 @@ long calculateStartingPosition(FILE *in, int starting_cluster, long root_address
     long start_position = data_area_start + (starting_cluster - 2) * cluster_size; 
     return start_position;
 }
+
 int main()
 {
-    FILE *in = fopen("sd.img", "rb");
+    FILE *in = fopen("sd.img", "r+b");
     Directory* root = printTree(in);
+    
     //printf(root->name);
     Directory* dir = changeDir(root, "/ADR2");
-    printf("%s\n\n", dir->name);
-    read("HISTORIE.TXT", dir->address, in);
-    
+    //printf("%s\n\n", dir->name);
+    //write("ddd.txt", dir->address, in);
+
+    //printf("-----READ-----\n");
+    //read("ccc.txt", dir->address, in);
+
+    mydelete("ccc.txt", dir->address, in);
+
     freeDirectoryTree(root);
     fclose(in);
     return 0;

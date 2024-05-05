@@ -42,6 +42,9 @@ void read(char *filename, long directory_address, FILE *in)
             memcpy(temp, entry.filename, 8);
             temp[8] = '\0';
 
+            //printf("filename: %.8s", name_padded);
+            //printf("temp: %.8s", temp);
+
             if (strcmp(temp, name_padded) == 0)
             {
                 long blocks_dir = bs.root_dir_entries * 32;
@@ -52,6 +55,7 @@ void read(char *filename, long directory_address, FILE *in)
                 long fat_start = boot_sector_start + cluster_size; // boot block has one sector
                 long entry_block_in_fat = entry.starting_cluster / 200;
                 long entry_in_fat = fat_start + (entry_block_in_fat * cluster_size) + (entry.starting_cluster * 2);
+                printf("starting_cluster: %hd", entry.starting_cluster);
 
                 char *data = malloc(entry.file_size);
                 FILE *out = fopen(filename, "wb");
