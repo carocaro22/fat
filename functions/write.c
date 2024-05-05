@@ -108,11 +108,12 @@ void writeToClusters(int starting_cluster, long cluster_addr, char* data, int fi
                 printf("Error writing to file\n");
             }
         } 
-        printf("current_cluster: %hX\n", current_cluster);
-        printf("current_cluster_addr: %lX\n", current_cluster_addr);
-        fseek(in, current_cluster_addr, SEEK_SET);
-        fwrite(&current_cluster, sizeof(short), 1, in);
+        //printf("current_cluster: %hX\n", current_cluster);
+        //printf("current_cluster_addr: %lX\n", current_cluster_addr);
+        long old_cluster_addr = current_cluster_addr;
         current_cluster = findFreeCluster(in, &current_cluster_addr, false);
+        fseek(in, old_cluster_addr, SEEK_SET);
+        fwrite(&current_cluster, sizeof(short), 1, in);
         ptr += chunk_size; 
     }
     printf("--------finished writing---------\n");
