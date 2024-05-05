@@ -61,14 +61,14 @@ int findFreeCluster(FILE* in, long *current_cluster_address, bool verbose) {
     }
 }
 
-void writeToClusters(int starting_cluster, char* data, int filesize, FILE* in, bool verbose) {
+void writeToClusters(int starting_cluster, long cluster_addr, char* data, int filesize, FILE* in, bool verbose) {
     if (in == NULL) {
         if (verbose) {
             printf("could not find file\n");
         }
     }
     unsigned short current_cluster = starting_cluster;
-    long current_cluster_addr; // how to know this? 
+    long current_cluster_addr = cluster_addr; // how to know this? 
     int chunk_size = 0x800;
     char* ptr = data;
     
@@ -88,7 +88,7 @@ void writeToClusters(int starting_cluster, char* data, int filesize, FILE* in, b
         unsigned int cluster_size = bs.sectors_per_cluster * bs.sector_size;
         long data_area_start = root_addr + blocks_dir;
         long start_pos = data_area_start + (current_cluster - 2) * cluster_size;
-        printf("current_cluster: %hd\n", current_cluster);
+        //printf("current_cluster: %hd\n", current_cluster);
         fseek(in, start_pos, SEEK_SET);
     
         if (filesize - i < chunk_size) 
@@ -108,6 +108,8 @@ void writeToClusters(int starting_cluster, char* data, int filesize, FILE* in, b
                 printf("Error writing to file\n");
             }
         } 
+        printf("current_cluster: %hX\n", current_cluster);
+        printf("current_cluster_addr: %lX\n", current_cluster_addr);
         fseek(in, current_cluster_addr, SEEK_SET);
         fwrite(&current_cluster, sizeof(short), 1, in);
         current_cluster = findFreeCluster(in, &current_cluster_addr, false);
@@ -159,7 +161,8 @@ void write(char filename[13], long directory_address, FILE* in) {
     int offset = findFreeCluster(in, &cluster_addr, true); 
 
     new_entry->starting_cluster = offset;
-    writeToClusters(offset, data, filesize, in, true);
+    printf("rtewt %lX\n", cluster_addr);
+    writeToClusters(offset, cluster_addr, data, filesize, in, true);
 
     fseek(in, directory_address, SEEK_SET);
     printf("directory_address %lX\n", directory_address);
